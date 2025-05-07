@@ -41,8 +41,16 @@ def get_openai_api_key() -> str:
     logger.debug(f"Preferred provider: {preferred_provider}")
     provider_config = CONFIG.providers[preferred_provider]
     logger.debug(f"Provider config: {provider_config}")
-    api_key = provider_config.api_key
-    return api_key
+
+    key = None
+    if provider_config and provider_config.api_key:
+        api_key = provider_config.api_key
+        if api_key:
+            api_key = api_key.strip('"')  # Remove quotes if present
+            key = api_key
+    if not key:
+        raise ConfigurationError(f"API key is not set")
+    return key
 
 _client_lock = threading.Lock()
 openai_client = None
