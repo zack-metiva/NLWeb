@@ -115,6 +115,29 @@ async def get_azure_embedding(text):
     except Exception as e:
         raise
 
+async def get_azure_bulk_embeddings(texts):
+    """Generate embeddings for a list of texts using Azure OpenAI (bulk)."""
+    client = get_azure_openai_client()
+    embedding_model = get_azure_openai_embedding_model()
+
+    if not embedding_model:
+        error_msg = "Azure OpenAI embedding model not configured"
+        raise ValueError(error_msg)
+
+    if not isinstance(texts, list) or not texts:
+        raise ValueError("Input must be a non-empty list of strings.")
+
+    try:
+        response = await client.embeddings.create(
+            input=texts,
+            model=embedding_model
+        )
+        # Each item in response.data is an embedding for the corresponding input
+        embeddings = [item.embedding for item in response.data]
+        return embeddings
+    except Exception as e:
+        raise
+
 def clean_azure_openai_response(content):
     """Clean and extract JSON content from OpenAI response."""
     response_text = content.strip()

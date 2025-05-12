@@ -192,3 +192,50 @@ async def get_embedding(
             }
         )
         raise
+
+async def get_bulk_embeddings(
+    texts: list,
+    provider: Optional[str] = None,
+    quality: str = "high"
+) -> list:
+    """
+    Get embeddings for a list of texts using the specified provider (bulk).
+    If provider is None, uses preferred_provider.
+    Currently only supports azure_openai.
+    """
+    provider = provider or CONFIG.preferred_provider
+    logger.info(f"Getting bulk embeddings with provider: {provider}, quality: {quality}")
+    logger.debug(f"Number of texts: {len(texts)}")
+
+    if provider not in CONFIG.providers:
+        error_msg = f"Unknown provider '{provider}'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    model_id = CONFIG.providers[provider].embedding_model
+    logger.debug(f"Using embedding model: {model_id}")
+
+    try:
+        if provider == "azure_openai":
+            logger.debug("Getting Azure OpenAI bulk embeddings")
+            from llm.azure_oai import get_azure_bulk_embeddings as azure_bulk_embed
+            result = await azure_bulk_embed(texts)
+            logger.debug(f"Azure bulk embeddings received, count: {len(result)}")
+            return result
+        # Add other providers here as needed
+        raise NotImplementedError(f"Bulk embedding not implemented for provider '{provider}'")
+    except Exception as e:
+        logger.exception(f"Error during bulk embedding generation with provider {provider}")
+        logger.log_with_context(
+            LogLevel.ERROR,
+            "Bulk embedding generation failed",
+            {
+                "provider": provider,
+                "model": model_id,
+                "quality": quality,
+                "num_texts": len(texts),
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }
+        )
+        raise

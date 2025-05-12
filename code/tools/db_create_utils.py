@@ -1,8 +1,6 @@
 
 import numpy as np
-#import retrieval
 import json
-import os
 from trim_schema_json import trim_schema_json
 skipTypes = ["ItemList", "ListItem", "AboutPage", "WebPage", "WebSite",  "Person"]
 
@@ -13,12 +11,6 @@ includeTypes = ["Recipe", "NeurIPSPoster", "InvitedTalk", "Oral", "Movie", "Loca
                 "AggregateOffer", "Event", "BusinessEvent", "Festival", "MusicEvent", "EducationEvent",
                 "SocialEvent", "SportsEvent"] 
               
-
-EMBEDDINGS_PATH_SMALL = "/Users/guha/mahi/data/sites/embeddings/small/"
-EMBEDDINGS_PATH_LARGE = "/Users/guha/mahi/data/sites/embeddings/large/"
-
-EMBEDDING_SIZE = "small"
-
 def int64_hash(string):
     # Compute the hash
     hash_value = hash(string)

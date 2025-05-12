@@ -1,31 +1,16 @@
-
 import time
-import openai 
-import numpy as np
+import asyncio
 import sys
 import os
 import glob
+import argparse
 
-# Set your OpenAI API key
-# Get OpenAI API key from environment variable
-openai.api_key = os.environ.get("OPENAI_API_KEY")
+# Add project root to sys.path to allow imports from other directories in the codebase
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, ROOT_DIR)
 
-client = openai.OpenAI()
-
-EMBEDDINGS_PATH_SMALL = "/Users/guha/mahi/data/sites/embeddings/small"
-EMBEDDINGS_PATH_LARGE = "/Users/guha/mahi/data/sites/embeddings/large"
-EMBEDDINGS_PATH_COMPACT = "/Users/guha/mahi/data/sites/embeddings/compact"
-
-EMBEDDING_MODEL_SMALL = "text-embedding-3-small"
-EMBEDDING_MODEL_LARGE = "text-embedding-3-large"
-
-JSONL_PATH = "/Users/guha/mahi/data/sites/jsonl/"
-JSONL_PATH_COMPACT = "/Users/guha/mahi/data/sites/compact_jsonl/"
-
-def get_embedding(text, model="text-embedding-3-small"):
-   text = text.replace("\n", " ")
-   return client.embeddings.create(input = [text], model=model).data[0].embedding
-
+from config.config import CONFIG
+from llm.llm import get_bulk_embeddings as llm_get_bulk_embeddings
 
 def read_file_content(file_path):
     try:
@@ -39,23 +24,12 @@ def read_file_content(file_path):
 def clean_utf8(text):
     return text.encode('utf-8', errors='ignore').decode('utf-8')
 
-def process_files(input_file, size="small", model="text-embedding-3-small", num_to_process=10000000):
+def process_files(schema_file_path, base_name, num_to_process=10000000, provider=None, batch_size=100, output_dir="/tmp"):
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, base_name + ".txt")
+    input_path = schema_file_path
     num_done = 0
-    if (size == "small"):
-        output_path = EMBEDDINGS_PATH_SMALL + "/" + input_file + ".txt"
-        model = EMBEDDING_MODEL_SMALL
-    elif (size == "compact"):
-        output_path = EMBEDDINGS_PATH_COMPACT + "/" + input_file + ".txt"
-        model = EMBEDDING_MODEL_SMALL
-    else:
-        output_path = EMBEDDINGS_PATH_LARGE + "/" + input_file + ".txt"
-        model = EMBEDDING_MODEL_LARGE
-
-    input_path = JSONL_PATH + input_file + "_schemas.txt"
-
-    if (size == "compact"):
-        input_path = JSONL_PATH_COMPACT + input_file + "_schemas.txt"
-    
     try:
         with open(input_path, 'r') as input_file, \
              open(output_path, 'w', encoding='utf-8') as output_file:
@@ -78,14 +52,11 @@ def process_files(input_file, size="small", model="text-embedding-3-small", num_
                     batch_jsons.append(json_str)
                     batch.append(json_str[0:6000])
                     num_done += 1
-                    # Process batch when it reaches size 100
-                    if len(batch) == 100 or (num_done > num_to_process):
-                        # Get embeddings for the batch
-                        embeddings = client.embeddings.create(input=batch, model=model).data
-                        
-                        # Write results for the batch
+                    # Process batch when it reaches the specified batch size
+                    if len(batch) == batch_size or (num_done > num_to_process):
+                        embeddings = asyncio.run(llm_get_bulk_embeddings(batch, provider=provider))
                         for i in range(len(batch)):
-                            output_file.write(f"{batch_urls[i]}\t{batch_jsons[i]}\t{embeddings[i].embedding}\n")
+                            output_file.write(f"{batch_urls[i]}\t{batch_jsons[i]}\t{embeddings[i]}\n")
                         print(f"Processed {num_done} lines")
                         # Clear the batches
                         batch = []
@@ -99,38 +70,65 @@ def process_files(input_file, size="small", model="text-embedding-3-small", num_
                     break
             # Process any remaining items in the final batch
             if batch:
-                embeddings = client.embeddings.create(input=batch, model=model).data
+                embeddings = asyncio.run(llm_get_bulk_embeddings(batch, provider=provider))
                 for i in range(len(batch)):
-                    output_file.write(f"{batch_urls[i]}\t{batch_jsons[i]}\t{embeddings[i].embedding}\n")
-                    
+                    output_file.write(f"{batch_urls[i]}\t{batch_jsons[i]}\t{embeddings[i]}\n")
     except Exception as e:
         print(f"Error processing files: {str(e)}")
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python embedding.py <input_file> <model>")
-        sys.exit(1)
-        
-    input_file = sys.argv[1]
-    model = sys.argv[2] # "small" or "large" or "compact"
-    
-    if input_file == 'all':
-        # Get all schema files in JSONL_PATH
-        schema_files = glob.glob(os.path.join(JSONL_PATH, "*_schemas.txt"))
-        
-        for schema_file in schema_files:
-            # Extract base filename without _schemas.txt
-            base_name = os.path.basename(schema_file)[:-12]
-            
-            # Check if embedding file exists
-            embedding_file = os.path.join(EMBEDDINGS_PATH_SMALL if model == "small" else EMBEDDINGS_PATH_LARGE, 
-                                        base_name + ".txt")
-            
-            if not os.path.exists(embedding_file):
-                print(f"Processing {base_name}")
-                process_files(base_name, model)
-            else:
-                print(f"Skipping {base_name} - embedding file already exists")
+def process_schema_file(schema_file, output_dir, provider, batch_size, force=False):
+    base_name = os.path.basename(schema_file)
+    if base_name.endswith("_schemas.txt"):
+        base_name = base_name[:-12]
+    embedding_file = os.path.join(output_dir, base_name + ".txt")
+    if force or not os.path.exists(embedding_file):
+        print(f"Processing {base_name}")
+        process_files(schema_file, base_name, provider=provider, batch_size=batch_size, output_dir=output_dir)
     else:
-        process_files(input_file, model)
+        print(f"Skipping {base_name} - embedding file already exists")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate and save embeddings for a file or all files in a directory."
+    )
+    parser.add_argument(
+        "input_file_or_directory", type=str,
+        help="The input file or directory to process. If a directory, all *_schemas.txt files will be processed."
+    )
+    parser.add_argument(
+        "--provider", type=str, default=None,
+        help="The embedding provider to use (default: preferred provider)."
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=100,
+        help="Batch size for embedding requests (default: 100)."
+    )
+    parser.add_argument(
+        "--output-dir", type=str, default="/tmp",
+        help="Directory to save embedding files (default: /tmp)."
+    )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Overwrite embedding files even if they already exist."
+    )
+    args = parser.parse_args()
+
+    input_path = args.input_file_or_directory
+    output_dir = args.output_dir
+    force = args.force
+
+    if os.path.isdir(input_path):
+        # Process all *_schemas.txt files in the directory
+        schema_files = glob.glob(os.path.join(input_path, "*_schemas.txt"))
+        if not schema_files:
+            print(f"No *_schemas.txt files found in directory: {input_path}")
+        for schema_file in schema_files:
+            process_schema_file(schema_file, output_dir, args.provider, args.batch_size, force=force)
+    elif os.path.isfile(input_path):
+        process_schema_file(input_path, output_dir, args.provider, args.batch_size, force=force)
+    else:
+        print(f"Error: {input_path} is not a valid file or directory.")
+
+if __name__ == "__main__":
+    main()
 
