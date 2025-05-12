@@ -21,67 +21,67 @@ Use these instructions to run an NLWeb server - below we have instructions for:
 These instructions assume that you have an [Azure subscription](https://go.microsoft.com/fwlink/?linkid=2227353&clcid=0x409&l=en-us&icid=nlweb), the [Azure CLI installed locally](https://learn.microsoft.com/cli/azure/install-azure-cli), and have Python 3.9+ installed locally.
 
 ## Local setup with setup.sh
-1. Clone or download this repository.
+
+Clone or download this repository.
 
 ```bash
 git clone https://github.com/microsoft/NLWeb
 cd NLWeb
 ```
 
-# Running the automated setup script
+### Running the automated setup script
 
 After cloning the repository, you can use our interactive setup script to quickly configure NLWeb. This automated process guides you through configuration, data loading, and server startup.
 
-## Run the setup script
+### Run the setup script
 
 ```bash
 ./setup.sh
 ```
 
-## Complete the configuration workflow
+### Complete the configuration workflow
 
 The setup script walks you through the following steps:
 
-1. **Configure your site**
-   - Enter your site name (this will be used to identify your NLWeb instance)
-   - Select which LLM provider you want to use (Azure OpenAI, Anthropic, Snowflake, etc.)
-   - Specify the environment variable that contains your API key
+### Configure your site
 
-2. **Choose data storage option**
-   - Select where your vector embeddings will be stored
-   - Options include:
-     - Local Qdrant (stores data on your machine)
-     - Azure AI Search
-     - Snowflake
-     - Other supported vector databases
+1. Enter your site name (this will be used to identify your NLWeb instance)
+2. Select which LLM provider you want to use (Azure OpenAI, Anthropic, Snowflake, etc.)
+3. Specify the environment variable that contains your API key
 
-3. **Provide connection details**
-   - If you selected Azure, enter:
-     - Your Azure endpoint URL
-     - API key or environment variable name
+### Choose data storage option
 
-4. **Select content sources**
-   - Choose which data sources to include in your NLWeb instance
-   - You can select multiple sources from the available options
-   - You can add more sources later as needed
+Select where your vector embeddings will be stored
+Options include:
+- Local Qdrant (stores data on your machine)
+- Azure AI Search
+- Snowflake
+- Other supported vector databases
 
-5. **Wait for database initialization**
-   - The script automatically creates vector embeddings for your selected content
-   - It loads these embeddings into your chosen database
-   - This process may take several minutes depending on the amount of content
+### Provide connection details
 
-6. **Server startup**
-   - When database loading completes, the server automatically starts
-   - The console will display the URL where you can access your NLWeb instance
-   - The home page will show sample queries based on your selected content
+If you selected Azure, enter:
+- Your Azure endpoint URL
+- API key or environment variable name
 
-7. **Try your NLWeb instance**
-   - Navigate to http://localhost:8000 in your browser
-   - Try the suggested example queries or create your own
-   - Explore how NLWeb understands natural language questions about your content
+### Select content sources
+
+Choose which data sources to include in your NLWeb instance. You can select multiple sources from the available options and can add more sources later as needed
+
+### Wait for database initialization
+
+The script automatically creates vector embeddings for your selected content by loading these embeddings into your chosen database. This process may take several minutes depending on the amount of content
+
+### Server startup
+
+When database loading completes, the server automatically starts. The console will display the URL where you can access your NLWeb instance. The home page will show sample queries based on your selected content.
+
+### Try your NLWeb instance
+
+- Navigate to http://localhost:8000 in your browser and try the suggested example queries or create your own.
+- Explore how NLWeb understands natural language questions about your content
 
 The setup script handles all the configuration automatically, creating the necessary files and settings based on your choices.
-
 
 ## Local Setup
 
