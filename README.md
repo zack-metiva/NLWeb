@@ -23,29 +23,56 @@ These instructions assume that you have an [Azure subscription](https://go.micro
 
 ## Local Setup
 
-1. Clone or download this repository.
+### 1. Get this repository
+
 ```
 git clone https://github.com/microsoft/NLWeb
 cd NLWeb
 ```
 
-2. Create a virtual environment, replacing 'myenv' if you want a different name for your environment. 
+Or Download it [here](https://github.com/microsoft/NLWeb)
+
+### 2. Install Poetry
+
+```
+pip install poetry   # Requires Python 3.9+
+```
+
+### 3. Set up your virtual environment
+
+We recommended utilizing a virtual environment for package dependency management. We recommend either [venv](#venv) **or** [poetry](#poetry).
+
+
+#### Option 1: Venv
+
+Create the environment replacing 'myenv' if you want a different name for your environment:
 ```
 python -m venv myenv
 ```
 
-3. Activate the virtual environment - again, replace 'myenv' with the name you selected above, if different.   
+Activate the environment:
 ```
 source myenv/bin/activate    # Or on Windows: myenv\Scripts\activate
 ```
 
-4. Install the dependencies.
+
+#### Option 2: Poetry
+
+Create the environment within the project and activate it:
+
 ```
-cd code
-pip install -r requirements.txt
+poetry config virtualenvs.in-project true
+source .venv/bin/activate    # Or on Windows .\.venv\Scripts\activate
 ```
 
-5. Create an LLM resource and setup your service API keys.  
+
+### 4. Install the dependencies.
+
+```
+poetry install
+```
+
+### 5. Create an LLM resource and setup your service API keys.  
 
    If you want to use the Azure OpenAI service, follow the instructions below at [Azure OpenAI endpoint creation instructions](#azure-openai-endpoint-creation).  If you are participating in the private preview, the Azure AI Search API keys will be provided for you in a separate document.
 
@@ -57,24 +84,30 @@ pip install -r requirements.txt
    > - Preferred Provider:  By default, this is `azure_openai` - replace this with another provider listed within the file.
    > - Check your models:  For example, the default models for Azure OpenAI are 4.1 and 4.1-mini, but you may want to change these to 4o and 4o-mini (as an example).
 
-6. Run a quick connectivity check:
+### 6. Run a quick connectivity check:
 ```
 python azure-connectivity.py     # If you'd like to use Azure as the LLM/retrieval provider.
 python snowflake-connectivity.py # If you'd like to use Snowflake as the LLM/retrieval provider.
 ```
 
-7. If you are participating in the private preview, modify your local copy of the [config_nlweb.yaml](code\config\config_nlweb.yaml) to scope the `sites` to search over your website only.
+### 7. Private Preview (Optional)
 
-8. Run the application locally:
+If you are participating in the private preview, modify your local copy of the [config_nlweb.yaml](code\config\config_nlweb.yaml) to scope the `sites` to search over your website only.
+
+### 8. Run the application locally
+
 ```
 python app-file.py
 ```
 
-9. Navigate to the local site and start your chat:
+### 9. UI interaction 
+
+Navigate to the local site and start your chat:
 - You can also experiment at http://localhost:8000/ or http://localhost:8000/static/nlwebsearch.html 
 - Try different modes / sites at http://localhost:8000/static/str_chat.html
 
    > Note: Your site scope was set above in the [config_nlweb.yaml](code\config\config_nlweb.yaml) file
+
 
 
 ## Azure OpenAI Endpoint Creation

@@ -424,3 +424,5 @@ data/json/ghrepoinfo-small.json
 code/.env
 app.zip
 
+# poetry lock file
+poetry.lock
