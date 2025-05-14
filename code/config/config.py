@@ -14,6 +14,49 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 from typing import Dict, Optional, Any, List
 
+# Define constants for base directories based on environment
+def get_base_directories():
+    """
+    Returns appropriate base directories for different types of files
+    based on the current environment (local dev or Azure App Service)
+    """
+    # Check if running in Azure App Service
+    if os.environ.get('WEBSITE_SITE_NAME'):
+        # In Azure App Service with ZIP deployment
+        data_dir = '/home/data/nlweb_data'  # Persistent storage across restarts
+        logs_dir = '/home/LogFiles/nlweb_logs'  # Azure recommended logs location
+        temp_dir = '/tmp/nlweb_temp'  # Temporary storage
+        
+        # Add symlinks for backward compatibility with code expecting paths in app directory
+        try:
+            app_dir = '/home/site/wwwroot'
+            if not os.path.exists(os.path.join(app_dir, 'data')):
+                os.symlink(data_dir, os.path.join(app_dir, 'data'))
+            if not os.path.exists(os.path.join(app_dir, 'logs')):
+                os.symlink(logs_dir, os.path.join(app_dir, 'logs'))
+        except Exception as e:
+            print(f"Warning: Failed to create symlinks: {e}")
+    else:
+        # Local development environment
+        app_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        data_dir = os.path.join(app_root, 'data')
+        logs_dir = os.path.join(app_root, 'logs')
+        temp_dir = os.path.join(app_root, 'temp')
+    
+    # Ensure directories exist
+    os.makedirs(data_dir, exist_ok=True)
+    os.makedirs(logs_dir, exist_ok=True)
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    return {
+        'data': data_dir,
+        'logs': logs_dir,
+        'temp': temp_dir
+    }
+
+# Initialize the base directories
+BASE_DIRS = get_base_directories()
+
 @dataclass
 class ModelConfig:
     high: str
@@ -80,12 +123,23 @@ class AppConfig:
 
     def __init__(self):
         load_dotenv()
+        # Create required directories
+        self._ensure_app_directories()
+        # Load configurations
         self.load_llm_config()
         self.load_embedding_config()
         self.load_retrieval_config()
         self.load_webserver_config()
         self.load_nlweb_config()
-
+    
+    def _ensure_app_directories(self):
+        """Ensure all required application directories exist"""
+        # Create subdirectories for various data types
+        os.makedirs(os.path.join(BASE_DIRS['data'], 'json'), exist_ok=True)
+        os.makedirs(os.path.join(BASE_DIRS['data'], 'json_with_embeddings'), exist_ok=True)
+        os.makedirs(os.path.join(BASE_DIRS['data'], 'indexes'), exist_ok=True)
+        os.makedirs(os.path.join(BASE_DIRS['logs']), exist_ok=True)
+    
     def _get_config_value(self, value: Any, default: Any = None) -> Any:
         """
         Get configuration value. If value is a string, return it directly.
@@ -245,9 +299,14 @@ class AppConfig:
         
         # Logging configuration
         logging_data = server_data.get("logging", {})
+        log_file_path = self._get_config_value(logging_data.get("file"), "webserver.log")
+        # If it's a relative path, make it absolute using the logs directory
+        if not os.path.isabs(log_file_path):
+            log_file_path = os.path.join(BASE_DIRS['logs'], os.path.basename(log_file_path))
+        
         logging_config = LoggingConfig(
             level=self._get_config_value(logging_data.get("level"), "info"),
-            file=self._get_config_value(logging_data.get("file"), "./logs/webserver.log")
+            file=log_file_path
         )
         
         # Convert logging file path to absolute if relative
@@ -303,14 +362,17 @@ class AppConfig:
         json_with_embeddings_folder = "./data/json_with_embeddings"
         
         if "data_folders" in data:
-            json_data_folder = self._get_config_value(
-                data["data_folders"].get("json_data"), 
-                json_data_folder
-            )
-            json_with_embeddings_folder = self._get_config_value(
+            json_data_path = self._get_config_value(data["data_folders"].get("json_data"), "json")
+            json_with_embeddings_path = self._get_config_value(
                 data["data_folders"].get("json_with_embeddings"), 
-                json_with_embeddings_folder
+                "json_with_embeddings"
             )
+            
+            # If paths are not absolute, make them absolute using BASE_DIRS
+            if not os.path.isabs(json_data_path):
+                json_data_folder = os.path.join(BASE_DIRS['data'], os.path.basename(json_data_path))
+            if not os.path.isabs(json_with_embeddings_path):
+                json_with_embeddings_folder = os.path.join(BASE_DIRS['data'], os.path.basename(json_with_embeddings_path))
         
         # Convert relative paths to absolute paths based on config file location
         if not os.path.isabs(json_data_folder):

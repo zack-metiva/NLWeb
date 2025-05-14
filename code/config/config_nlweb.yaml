@@ -8,5 +8,5 @@ sites: "imdb,nytimes,verge,delish,alltrails,allbirds,seriouseats,oreilly,npr pod
 
 # Data folders for JSON files and embeddings
 data_folders:
-  json_data: "../data/json"
-  json_with_embeddings: "../data/json_with_embeddings"
+  json_data: "json"
+  json_with_embeddings: "json_with_embeddings"

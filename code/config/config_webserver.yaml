@@ -23,7 +23,7 @@ server:
   # Logging configuration
   logging:
     level: info
-    file: ./logs/webserver.log
+    file: webserver.log
     
   # Static file serving
   static:
