@@ -193,7 +193,7 @@ To load data locally, you'll want to use [Qdrant](https://qdrant.tech/) as your 
 
 2. Configure nlweb to use qdrant, and your embedding endpoint.
 
-   Ensure the following environment variables exist that match your LLM resource you created above in [Azure OpenAI Endpoint Creation](#azure-openai-endpoint-creation).
+   Ensure the following environment variables exist that match your LLM resource you created above in [Azure OpenAI Endpoint Creation](#azure-openai-endpoint-creation). These can be either in your .env file, or as exported variables.
 
    ```bash
    export AZURE_OPENAI_API_KEY="<my azure openai key>"
