@@ -187,7 +187,9 @@ To load data locally, you'll want to use [Qdrant](https://qdrant.tech/) as your 
 
 1. Install `qdrant`
 
-   Install qdrant locally from https://github.com/qdrant/qdrant/releases. Download the package appropriate for your system, and start the service. On Linux, this can be invoked simply as `qdrant`, which will show the service starting on the console.
+   Install Qdrant locally from https://github.com/qdrant/qdrant/releases. Download the package appropriate for your system. Before you start the service, keep in mind, that by default, Qdrant will create a directory `./storage` in the directory you start it from unless you change the configuration. For more configuration information see [the Qdrant configuration docs](https://qdrant.tech/documentation/guides/configuration/).
+   
+   On Linux, this can be invoked simply as `qdrant`, which will show the service starting on the console.
 
 2. Configure nlweb to use qdrant, and your embedding endpoint.
 
@@ -206,7 +208,7 @@ To load data locally, you'll want to use [Qdrant](https://qdrant.tech/) as your 
    preferred_endpoint: qdrant_local
    ```
 
-3. Pick your data source, and generate embeddings for Qdrant.
+4. Pick your data source, and generate embeddings for Qdrant.
 
    You can load local JSON, or use an RSS feed of your choice. Replace "mysite" with a site that has rss feeds you wish to load.
 
@@ -216,6 +218,7 @@ To load data locally, you'll want to use [Qdrant](https://qdrant.tech/) as your 
    ```
 
    Other methods of invoking the emdedding tool:
+
    ```bash
     python -m tools.db_load file.txt site_name
     python -m tools.db_load https://example.com/feed.rss site_name
@@ -226,7 +229,10 @@ To load data locally, you'll want to use [Qdrant](https://qdrant.tech/) as your 
     python -m tools.db_load --url-list urls.txt site_name
     python -m tools.db_load --url-list https://example.com/feed_list.txt site_name
    ```
- 
+
+4. Test the nlweb app
+
+   From here, you should be able to go to your locally installed nlweb app at `http://localhost:8000` and query the data you've loaded.
 
 
 ## Monitoring and Troubleshooting
