@@ -57,6 +57,8 @@ pip install -r requirements.txt
    > - Preferred Provider:  By default, this is `azure_openai` - replace this with another provider listed within the file.
    > - Check your models:  For example, the default models for Azure OpenAI are 4.1 and 4.1-mini, but you may want to change these to 4o and 4o-mini (as an example).
 
+
+
 6. Run a quick connectivity check:
 ```
 python azure-connectivity.py     # If you'd like to use Azure as the LLM/retrieval provider.
@@ -178,6 +180,54 @@ Currently, while the repo is private, it is recommended to use option 2.
    # Deploy the ZIP file
    az webapp deployment source config-zip --resource-group yourResourceGroup --name yourWebAppName --src ./app.zip
    ```
+
+## Loading data locally
+
+To load data locally, you'll want to use [Qdrant](https://qdrant.tech/) as your local vector database. You'll need an embedding endpoint to create data for your vector database. In this example we'll use Azure OpenAI.
+
+1. Install `qdrant`
+
+   Install qdrant locally from https://github.com/qdrant/qdrant/releases. Download the package appropriate for your system, and start the service. On Linux, this can be invoked simply as `qdrant`, which will show the service starting on the console.
+
+2. Configure nlweb to use qdrant, and your embedding endpoint.
+
+   Ensure the following environment variables exist that match your LLM resource you created above in [Azure OpenAI Endpoint Creation](#azure-openai-endpoint-creation).
+
+   ```bash
+   export AZURE_OPENAI_API_KEY="<my azure openai key>"
+   export AZURE_OPENAI_ENDPOINT="<my azure openai endpoint>"
+   ```
+
+3. Ensure that your preferred endpoint is configured
+
+   Modify the file at `./code/config/config_retrieval.yaml` and ensure that the `preferred_endpoint:` value is `qdrant_local`.
+
+   ```yaml
+   preferred_endpoint: qdrant_local
+   ```
+
+3. Pick your data source, and generate embeddings for Qdrant.
+
+   You can load local JSON, or use an RSS feed of your choice. Replace "mysite" with a site that has rss feeds you wish to load.
+
+   ```bash
+   cd code
+   python -m tools.db_load --url-list ../data/json/scifi_movies_schemas.txt scifi_movies --database qdrant_local
+   ```
+
+   Other methods of invoking the emdedding tool:
+   ```bash
+    python -m tools.db_load file.txt site_name
+    python -m tools.db_load https://example.com/feed.rss site_name
+    python -m tools.db_load data.csv site_name
+    python -m tools.db_load --delete-site site_name
+    python -m tools.db_load file.txt site_name --database qdrant_local
+    python -m tools.db_load --force-recompute file.txt site_name
+    python -m tools.db_load --url-list urls.txt site_name
+    python -m tools.db_load --url-list https://example.com/feed_list.txt site_name
+   ```
+ 
+
 
 ## Monitoring and Troubleshooting
 
