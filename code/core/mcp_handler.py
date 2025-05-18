@@ -201,6 +201,10 @@ async def handle_mcp_request(query_params, body, send_response, send_chunk, stre
                     # Function to get available sites
                     await handle_get_sites_function(send_response, send_chunk)
                 
+                elif function_name == "list_resources":
+                    # Function to list available resources
+                    await handle_list_resources_function(send_response, send_chunk)
+                
                 else:
                     # Return error for unsupported functions
                     error_response = {
@@ -382,7 +386,8 @@ async def handle_list_tools_function(send_response, send_chunk):
                         }
                     },
                     "required": ["query"]
-                }
+                },
+                "url": "/tools/ask"  # Add URL for linking
             },
             {
                 "name": "ask_nlw",
@@ -404,7 +409,8 @@ async def handle_list_tools_function(send_response, send_chunk):
                         }
                     },
                     "required": ["query"]
-                }
+                },
+                "url": "/tools/ask_nlw"  # Add URL for linking
             },
             {
                 "name": "list_prompts",
@@ -413,7 +419,8 @@ async def handle_list_tools_function(send_response, send_chunk):
                     "type": "object",
                     "properties": {},
                     "required": []
-                }
+                },
+                "url": "/tools/list_prompts"  # Add URL for linking
             },
             {
                 "name": "get_prompt",
@@ -427,7 +434,8 @@ async def handle_list_tools_function(send_response, send_chunk):
                         }
                     },
                     "required": ["prompt_id"]
-                }
+                },
+                "url": "/tools/get_prompt"  # Add URL for linking
             },
             {
                 "name": "get_sites",
@@ -436,17 +444,38 @@ async def handle_list_tools_function(send_response, send_chunk):
                     "type": "object",
                     "properties": {},
                     "required": []
-                }
+                },
+                "url": "/tools/get_sites"  # Add URL for linking
+            },
+            {
+                "name": "list_resources",
+                "description": "List available resources for the API",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                },
+                "url": "/tools/list_resources"  # Add URL for linking
             }
         ]
+        
+        # Create the response with tools
+        response = {
+            "tools": available_tools
+        }
+        
+        # Get appropriate chatbot instructions from config
+        instructions = CONFIG.get_chatbot_instructions("search_results")
+        
+        # Add the instructions to the response
+        if instructions:
+            response["chatbot_instructions"] = instructions
         
         # Format the response according to MCP protocol
         mcp_response = {
             "type": "function_response",
             "status": "success",
-            "response": {
-                "tools": available_tools
-            }
+            "response": response
         }
         
         # Send the response
@@ -480,13 +509,23 @@ async def handle_list_prompts_function(send_response, send_chunk):
             }
         ]
         
+        # Create the response with prompts
+        response = {
+            "prompts": available_prompts
+        }
+        
+        # Get appropriate chatbot instructions from config
+        instructions = CONFIG.get_chatbot_instructions("search_results")
+        
+        # Add the instructions to the response
+        if instructions:
+            response["chatbot_instructions"] = instructions
+        
         # Format the response according to MCP protocol
         mcp_response = {
             "type": "function_response",
             "status": "success",
-            "response": {
-                "prompts": available_prompts
-            }
+            "response": response
         }
         
         # Send the response
@@ -528,19 +567,22 @@ async def handle_get_prompt_function(function_call, send_response, send_chunk):
                 "id": "default",
                 "name": "Default Prompt",
                 "description": "Standard prompt for general queries",
-                "prompt_text": "You are a helpful assistant. Answer the following question: {{query}}"
+                "prompt_text": "You are a helpful assistant. Answer the following question: {{query}}",
+                "url": "/prompts/default"  # Add URL for linking
             },
             "technical": {
                 "id": "technical",
                 "name": "Technical Prompt",
                 "description": "Prompt optimized for technical questions",
-                "prompt_text": "You are a technical expert. Provide detailed technical information for: {{query}}"
+                "prompt_text": "You are a technical expert. Provide detailed technical information for: {{query}}",
+                "url": "/prompts/technical"  # Add URL for linking
             },
             "creative": {
                 "id": "creative",
                 "name": "Creative Prompt",
                 "description": "Prompt optimized for creative writing and brainstorming",
-                "prompt_text": "You are a creative writing assistant. Create engaging and imaginative content for: {{query}}"
+                "prompt_text": "You are a creative writing assistant. Create engaging and imaginative content for: {{query}}",
+                "url": "/prompts/creative"  # Add URL for linking
             }
         }
         
@@ -555,11 +597,24 @@ async def handle_get_prompt_function(function_call, send_response, send_chunk):
             await send_chunk(json.dumps(error_response), end_response=True)
             return
         
+        # Get the prompt data
+        prompt_data = prompts[prompt_id]
+        
+        # Create the response with prompt data
+        response = prompt_data
+        
+        # Get appropriate chatbot instructions from config
+        instructions = CONFIG.get_chatbot_instructions("search_results")
+        
+        # Add the instructions to the response
+        if instructions:
+            response["chatbot_instructions"] = instructions
+        
         # Format the response according to MCP protocol
         mcp_response = {
             "type": "function_response",
             "status": "success",
-            "response": prompts[prompt_id]
+            "response": response
         }
         
         # Send the response
@@ -583,16 +638,27 @@ async def handle_get_sites_function(send_response, send_chunk):
             site_info.append({
                 "id": site,
                 "name": site.capitalize(),  # Simple name formatting, can be enhanced
-                "description": f"Site: {site}"  # Basic description, should be enhanced
+                "description": f"Site: {site}",  # Basic description, should be enhanced
+                "url": f"/sites/{site}"  # Add URL for linking
             })
+        
+        # Create the response with sites
+        response = {
+            "sites": site_info
+        }
+        
+        # Get appropriate chatbot instructions from config
+        instructions = CONFIG.get_chatbot_instructions("search_results")
+        
+        # Add the instructions to the response
+        if instructions:
+            response["chatbot_instructions"] = instructions
         
         # Format the response according to MCP protocol
         mcp_response = {
             "type": "function_response",
             "status": "success",
-            "response": {
-                "sites": site_info
-            }
+            "response": response
         }
         
         # Send the response
@@ -602,4 +668,70 @@ async def handle_get_sites_function(send_response, send_chunk):
     except Exception as e:
         logger.error(f"Error in handle_get_sites_function: {str(e)}")
         print(f"Error in handle_get_sites_function: {str(e)}")
+        raise
+
+async def handle_list_resources_function(send_response, send_chunk):
+    """Handle the 'list_resources' function to return available resources"""
+    try:
+        # Define the list of available resources (can be loaded from config or database)
+        available_resources = [
+            {
+                "id": "documentation",
+                "name": "Documentation",
+                "description": "API and usage documentation",
+                "url": "/docs"
+            },
+            {
+                "id": "examples",
+                "name": "Example Queries",
+                "description": "Example queries and responses for learning purposes",
+                "url": "/examples"
+            },
+            {
+                "id": "schemas",
+                "name": "Data Schemas",
+                "description": "Schema definitions for response formats",
+                "url": "/schemas"
+            },
+            {
+                "id": "tutorials",
+                "name": "Tutorials",
+                "description": "Step-by-step guides for common use cases",
+                "url": "/tutorials"
+            },
+            {
+                "id": "api_reference",
+                "name": "API Reference",
+                "description": "Complete API reference documentation",
+                "url": "/api/reference"
+            }
+        ]
+        
+        # Create the response with resources
+        response = {
+            "resources": available_resources
+        }
+        
+        # Get appropriate chatbot instructions from config
+        # Use search_results instructions since they contain formatting for links
+        instructions = CONFIG.get_chatbot_instructions("search_results")
+        
+        # Add the instructions to the response
+        if instructions:
+            response["chatbot_instructions"] = instructions
+        
+        # Format the response according to MCP protocol
+        mcp_response = {
+            "type": "function_response",
+            "status": "success",
+            "response": response
+        }
+        
+        # Send the response
+        await send_response(200, {'Content-Type': 'application/json'})
+        await send_chunk(json.dumps(mcp_response), end_response=True)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_list_resources_function: {str(e)}")
+        print(f"Error in handle_list_resources_function: {str(e)}")
         raise
