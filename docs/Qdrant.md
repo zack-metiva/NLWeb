@@ -33,7 +33,7 @@ To load data locally, you'll want to use [Qdrant](https://qdrant.tech/) as your 
    cd code
    python -m tools.db_load --url-list ../data/json/scifi_movies_schemas.txt scifi_movies --database qdrant_local
    ```
-   You can find more data examples at [docs\db_load.md](docs\db_load.md).
+   You can find more data examples at [docs/db_load.md](db_load.md).
 
    Other methods of invoking the emdedding tool:
 
