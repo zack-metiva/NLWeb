@@ -264,7 +264,7 @@ async def run_benchmark():
 
     if RUN_SINGLE_TURN:
         all_results = await run_single_turn_benchmark(generate_mode, streaming, num_runs)
-        with open('../data/benchmark_results/single_turn_results.json', 'w') as f:
+        with open('./benchmark/benchmark_results/single_turn_results.json', 'w') as f:
             json.dump(all_results, f, indent=2)
         print_single_turn_stats_by_provider(all_results)
         plot_results(
@@ -273,23 +273,23 @@ async def run_benchmark():
                 for r in all_results for t in r['times'] if t is not None
             ],
             title='Single-turn Benchmark Timing by Provider',
-            filename=f"../data/benchmark_results/single_turn_benchmark_{CONFIG.preferred_llm_endpoint}.png"
+            filename=f"./benchmark/benchmark_results/single_turn_benchmark_{CONFIG.preferred_llm_endpoint}.png"
         )
     if RUN_MULTI_TURN:
         multiturn_results = await run_multiturn_benchmark(generate_mode, streaming)
-        with open('../data/benchmark_results/multiturn_results.json', 'w') as f:
+        with open('./benchmark/benchmark_results/multiturn_results.json', 'w') as f:
             json.dump(multiturn_results, f, indent=2)
         print_multiturn_stats_by_provider(multiturn_results)
         print_multiturn_conversation_stats_by_provider(multiturn_results)
         plot_results(
             [r for r in multiturn_results if r['turn'] != 'ALL'],
             title='Multi-turn Benchmark Timing by Provider',
-            filename=f'./benchmark/data/results/multiturn_benchmark_{CONFIG.preferred_llm_endpoint}.png'
+            filename=f'./benchmark/benchmark_results/multiturn_benchmark_{CONFIG.preferred_llm_endpoint}.png'
         )
         plot_total_conversation_time(
             multiturn_results,
             title='Total Conversation Time by Provider',
-            filename=f'./benchmark/data/results/multiturn_total_conversation_time_{CONFIG.preferred_llm_endpoint}.png'
+            filename=f'./benchmark/benchmark_results/multiturn_total_conversation_time_{CONFIG.preferred_llm_endpoint}.png'
         )
 
 if __name__ == "__main__":
