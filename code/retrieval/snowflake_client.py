@@ -115,8 +115,7 @@ def _name_from_schema_json(schema_json: str) -> str:
 
 async def get_unique_sites(cfg: RetrievalProviderConfig) -> List[str]:
     """
-    Get unique site values from the Snowflake Cortex Search Service by querying
-    the underlying table directly.
+    Get unique site values from the Snowflake Cortex Search Service using CORTEX_SEARCH_DATA_SCAN.
     
     Args:
         cfg: The Snowflake configuration
@@ -130,54 +129,27 @@ async def get_unique_sites(cfg: RetrievalProviderConfig) -> List[str]:
     # Get the service configuration
     (database, schema, service) = get_cortex_search_service(cfg)
     
-    # Query the underlying table for distinct site values
-    # Note: We assume the table has the same name as the service for simplicity
-    # In practice, you might need to query Snowflake metadata to find the actual table name
-    query = f"SELECT DISTINCT site FROM {database}.{schema}.{service}_DATA ORDER BY site"
+    # Use CORTEX_SEARCH_DATA_SCAN as recommended by sfc-gh-ashankar
+    query = f"SELECT DISTINCT site FROM TABLE(CORTEX_SEARCH_DATA_SCAN(SERVICE_NAME=>'{database}.{schema}.{service}')) ORDER BY site"
     
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                snowflake.get_account_url(cfg) + "/api/v2/statements",
-                json={
-                    "statement": query,
-                    "timeout": 60,
-                    "database": database,
-                    "schema": schema,
-                    "warehouse": cfg.api_key if cfg.api_key else "COMPUTE_WH",  # Use api_key as warehouse name if provided
-                },
-                headers={
-                    "Authorization": f"Bearer {snowflake.get_pat(cfg)}",
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                timeout=60,
-            )
-            
-            if response.status_code == 400:
-                raise Exception(response.json())
-            response.raise_for_status()
-            
-            result_data = response.json()
-            
-            # Extract site values from the result
-            sites = []
-            if "data" in result_data:
-                for row in result_data["data"]:
-                    if row and len(row) > 0 and row[0]:
-                        sites.append(row[0])
-            
-            return sites
-            
-    except Exception as e:
-        # Fallback: try a more generic approach if the direct query fails
-        try:
-            # Use a search with empty query to get some results and extract sites
-            results = await search(query="", top_n=1000, cfg=cfg)
-            sites = set()
-            for result in results:
-                if len(result) > 3 and result[3]:  # site is at index 3
-                    sites.add(result[3])
-            return sorted(list(sites))
-        except Exception as fallback_error:
-            raise Exception(f"Failed to get unique sites. Primary error: {str(e)}, Fallback error: {str(fallback_error)}")
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            snowflake.get_account_url(cfg) + "/api/v2/statements",
+            json={
+                "statement": query,
+                "timeout": 60,
+            },
+            headers={
+                "Authorization": f"Bearer {snowflake.get_pat(cfg)}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            timeout=60,
+        )
+        
+        if response.status_code == 400:
+            raise Exception(response.json())
+        response.raise_for_status()
+        
+        # Use concise list comprehension as recommended by sfc-gh-ashankar
+        return [x[0] for x in response.json().get("data", [])]
