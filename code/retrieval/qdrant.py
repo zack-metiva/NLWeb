@@ -734,32 +734,25 @@ class QdrantVectorClient:
             batch_size = 1000
             
             while True:
-                try:
-                    points, next_offset = await client.scroll(
-                        collection_name=collection_name,
-                        limit=batch_size,
-                        offset=offset,
-                        with_payload=["site"]
-                    )
-                    
-                    if not points:
-                        break
-                    
-                    # Extract site values
-                    for point in points:
-                        site = point.payload.get("site")
-                        if site:
-                            sites.add(site)
-                    
-                    offset = next_offset
-                    if offset is None:
-                        break
-                        
-                except Exception as e:
-                    if "Collection not found" in str(e):
-                        logger.warning(f"Collection '{collection_name}' not found during scroll")
-                        return []
-                    raise
+                points, next_offset = await client.scroll(
+                    collection_name=collection_name,
+                    limit=batch_size,
+                    offset=offset,
+                    with_payload=["site"]
+                )
+                
+                if not points:
+                    break
+                
+                # Extract site values
+                for point in points:
+                    site = point.payload.get("site")
+                    if site:
+                        sites.add(site)
+                
+                offset = next_offset
+                if offset is None:
+                    break
             
             # Convert to sorted list
             site_list = sorted(list(sites))
