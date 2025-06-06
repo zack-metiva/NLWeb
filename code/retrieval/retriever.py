@@ -19,6 +19,7 @@ from utils.logger import LogLevel
 # Import client classes
 from retrieval.azure_search_client import AzureSearchClient
 from retrieval.milvus_client import MilvusVectorClient
+from retrieval.opensearch_client import OpenSearchClient
 from retrieval.qdrant import QdrantVectorClient
 from retrieval.snowflake_client import SnowflakeCortexSearchClient
 
@@ -183,6 +184,8 @@ class VectorDBClient:
                 client = AzureSearchClient(self.endpoint_name)
             elif self.db_type == "milvus":
                 client = MilvusVectorClient(self.endpoint_name)
+            elif self.db_type == "opensearch":
+                client = OpenSearchClient(self.endpoint_name)
             elif self.db_type == "qdrant":
                 client = QdrantVectorClient(self.endpoint_name)
             elif self.db_type == "snowflake_cortex_search":
@@ -279,7 +282,7 @@ class VectorDBClient:
         Returns:
             List of search results
         """
-
+        print(f"Searching for '{query[:50]}...' in site: {site}, num_results: {num_results}")
         if (site == "all"):
             sites = CONFIG.nlweb.sites
             if (len(sites) == 0 or sites == "all"):

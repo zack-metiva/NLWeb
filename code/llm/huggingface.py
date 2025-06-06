@@ -2,77 +2,74 @@
 # Licensed under the MIT License
 
 """
-Anthropic wrapper for LLM functionality.
+Hugging Face Inference Providers wrapper for LLM functionality.
 
 WARNING: This code is under development and may undergo changes in future releases.
 Backwards compatibility is not guaranteed at this time.
 """
 
-import os
+import asyncio
 import json
 import re
-import logging
-import asyncio
-from typing import Dict, Any, List, Optional
-
-from anthropic import AsyncAnthropic
-from config.config import CONFIG
 import threading
+from typing import Any, Dict, List, Optional
 
+from config.config import CONFIG
+from utils.logging_config_helper import get_configured_logger
+
+from huggingface_hub import AsyncInferenceClient
 from llm.llm_provider import LLMProvider
 
-logger = logging.getLogger(__name__)
+
+logger = get_configured_logger("llm")
 
 
 class ConfigurationError(RuntimeError):
-    """Raised when configuration is missing or invalid."""
+    """
+    Raised when configuration is missing or invalid.
+    """
+
     pass
 
 
-class AnthropicProvider(LLMProvider):
-    """Implementation of LLMProvider for Anthropic API."""
-    
+class HuggingFaceProvider(LLMProvider):
+    """Implementation of LLMProvider for Hugging Face Inference Providers."""
+
     _client_lock = threading.Lock()
     _client = None
-    
-    @classmethod
-    def get_api_key(cls) -> str:
-        """Retrieve the Anthropic API key from the environment or raise an error."""
-        # Get the API key from the preferred provider config
-        provider_config = CONFIG.llm_endpoints["anthropic"]
-        if provider_config and provider_config.api_key:
-            api_key = provider_config.api_key
-            if api_key:
-                api_key = api_key.strip('"')  # Remove quotes if present
-                return api_key
-        # If we didn't find a key, the environment variable is not set properly
-        raise ConfigurationError("Environment variable ANTHROPIC_API_KEY is not set")
 
     @classmethod
-    def get_client(cls) -> AsyncAnthropic:
+    def get_api_key(cls) -> str:
         """
-        Configure and return an async Anthropic client.
+        Retrieve the Hugging Face API key from environment or raise an error.
+        """
+        # Get the API key from the preferred provider config
+        provider_config = CONFIG.llm_endpoints["huggingface"]
+        api_key = provider_config.api_key
+        return api_key
+
+    @classmethod
+    def get_client(cls) -> AsyncInferenceClient:
+        """
+        Configure and return an asynchronous Hugging Face client.
         """
         with cls._client_lock:  # Thread-safe client initialization
             if cls._client is None:
                 api_key = cls.get_api_key()
-                cls._client = AsyncAnthropic(api_key=api_key)
+                cls._client = AsyncInferenceClient(provider="auto", api_key=api_key)
         return cls._client
 
     @classmethod
     def _build_messages(cls, prompt: str, schema: Dict[str, Any]) -> List[Dict[str, str]]:
         """
-        Construct the message sequence for JSON-schema enforcement.
+        Construct the system and user message sequence enforcing a JSON schema.
         """
         return [
             {
-                "role": "assistant",
-                "content": f"I'll provide a JSON response matching this schema: {json.dumps(schema)}"
+                "role": "system",
+                "content": (f"Provide a valid JSON response matching this schema: {json.dumps(schema)}"),
             },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "user", "content": prompt},
         ]
 
     @classmethod
@@ -92,45 +89,40 @@ class AnthropicProvider(LLMProvider):
         prompt: str,
         schema: Dict[str, Any],
         model: Optional[str] = None,
-        temperature: float = 1.0,
+        temperature: float = 0.7,
         max_tokens: int = 2048,
         timeout: float = 30.0,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
-        Send an async chat completion request to Anthropic and return parsed JSON.
+        Send an async chat completion request and return parsed JSON output.
         """
         # If model not provided, get it from config
         if model is None:
-            provider_config = CONFIG.llm_endpoints["anthropic"]
+            print("No model provided, getting it from config")
+            provider_config = CONFIG.llm_endpoints["huggingface"]
             # Use the 'high' model for completions by default
             model = provider_config.models.high
-        
+
         client = self.get_client()
         messages = self._build_messages(prompt, schema)
 
         try:
             response = await asyncio.wait_for(
-                client.messages.create(
+                client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    max_tokens=max_tokens,
                     temperature=temperature,
-                    system=f"You are a helpful assistant that always responds with valid JSON matching the provided schema."
+                    max_tokens=max_tokens,
                 ),
-                timeout
+                timeout,
             )
         except asyncio.TimeoutError:
             logger.error("Completion request timed out after %s seconds", timeout)
-            return {}
+            raise
 
-        # Extract the response content
-        content = response.content[0].text
-        return self.clean_response(content)
+        return self.clean_response(response.choices[0].message.content)
 
 
 # Create a singleton instance
-provider = AnthropicProvider()
-
-# For backwards compatibility
-get_anthropic_completion = provider.get_completion
+provider = HuggingFaceProvider()
