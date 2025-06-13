@@ -81,7 +81,8 @@ class IncrementalCrawler:
             "total_json_size": 0,
             "total_schemas": 0,
             "total_documents_uploaded": 0,
-            "schema_types": {}  # Count of each @type found
+            "schema_types": {},  # Count of each @type found
+            "http_errors": {}  # Count of HTTP errors by status code
         }
         
     def _load_status(self) -> Dict[str, Dict]:
@@ -179,6 +180,20 @@ class IncrementalCrawler:
                 f"Docs uploaded: {total_docs}"
             )
         
+        # Add HTTP errors to status line if any
+        if self.stats["http_errors"]:
+            # Sort by status code
+            sorted_errors = sorted(self.stats["http_errors"].items())
+            # Group common errors
+            error_summary = []
+            for status, count in sorted_errors:
+                if status >= 400 and status < 500:
+                    error_summary.append(f"{status}:{count}")
+                elif status >= 500:
+                    error_summary.append(f"{status}:{count}")
+            if error_summary:
+                status_line += f" | HTTP Errors: {', '.join(error_summary)}"
+        
         # Add top schema types to status line
         if self.stats["schema_types"]:
             # Get top 3 types by count
@@ -191,14 +206,23 @@ class IncrementalCrawler:
     
     async def _fetch_page(self, url: str) -> Optional[Tuple[str, int]]:
         """Fetch a single page and return HTML content and size."""
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
         async with aiohttp.ClientSession() as session:
             for attempt in range(self.max_retries):
                 try:
-                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                    async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
                         if response.status == 200:
                             html = await response.text()
                             return html, len(html.encode('utf-8'))
                         else:
+                            # Track HTTP error
+                            status_code = response.status
+                            if status_code not in self.stats["http_errors"]:
+                                self.stats["http_errors"][status_code] = 0
+                            self.stats["http_errors"][status_code] += 1
+                            
                             logger.debug(f"HTTP {response.status} for {url}")
                             if attempt == self.max_retries - 1:
                                 return None
@@ -405,6 +429,53 @@ class IncrementalCrawler:
                        f"{self.stats['failed']} failed, {self.stats['already_crawled']} already crawled")
         logger.info(f"Total JSON extracted: {self.stats['total_json_size'] / 1024:.1f}KB from {self.stats['total_schemas']} schemas")
         logger.info(f"Total documents uploaded to database: {self.stats['total_documents_uploaded']}")
+        
+        # Show HTTP errors summary if any
+        if self.stats["http_errors"]:
+            logger.info("HTTP errors encountered:")
+            # Sort by status code
+            sorted_errors = sorted(self.stats["http_errors"].items())
+            
+            # Group by error category
+            client_errors = {}  # 4xx
+            server_errors = {}  # 5xx
+            other_errors = {}   # Others
+            
+            for status, count in sorted_errors:
+                if 400 <= status < 500:
+                    client_errors[status] = count
+                elif 500 <= status < 600:
+                    server_errors[status] = count
+                else:
+                    other_errors[status] = count
+            
+            if client_errors:
+                logger.info("  Client errors (4xx):")
+                for status, count in client_errors.items():
+                    error_name = {
+                        400: "Bad Request",
+                        401: "Unauthorized",
+                        403: "Forbidden",
+                        404: "Not Found",
+                        429: "Too Many Requests"
+                    }.get(status, "")
+                    logger.info(f"    {status} {error_name}: {count}")
+            
+            if server_errors:
+                logger.info("  Server errors (5xx):")
+                for status, count in server_errors.items():
+                    error_name = {
+                        500: "Internal Server Error",
+                        502: "Bad Gateway",
+                        503: "Service Unavailable",
+                        504: "Gateway Timeout"
+                    }.get(status, "")
+                    logger.info(f"    {status} {error_name}: {count}")
+            
+            if other_errors:
+                logger.info("  Other errors:")
+                for status, count in other_errors.items():
+                    logger.info(f"    {status}: {count}")
         
         # Show schema types found
         if self.stats["schema_types"]:
