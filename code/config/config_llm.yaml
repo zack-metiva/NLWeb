@@ -75,9 +75,8 @@ endpoints:
       low: Qwen/Qwen2.5-Coder-7B-Instruct
 
   aws_bedrock:
-    api_key_env: AWS_BEDROCK_ACCESS_KEY_ID
-    api_secret_env: AWS_BEDROCK_SECRET_ACCESS_KEY
-    api_region_env: AWS_BEDROCK_REGION
+    api_key_env: AWS_BEDROCK_API_KEY
+    api_version_env: AWS_BEDROCK_REGION
     llm_type: aws_bedrock
     models:
       high: amazon.nova-pro-v1:0
