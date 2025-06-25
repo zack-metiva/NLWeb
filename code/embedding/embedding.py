@@ -22,7 +22,8 @@ _provider_locks = {
     "openai": threading.Lock(),
     "gemini": threading.Lock(),
     "azure_openai": threading.Lock(),
-    "snowflake": threading.Lock()
+    "snowflake": threading.Lock(),
+    "aws_bedrock": threading.Lock()
 }
 
 async def get_embedding(
@@ -113,6 +114,14 @@ async def get_embedding(
                 timeout=timeout
             )
             logger.debug(f"Snowflake Cortex embeddings received, dimension: {len(result)}")
+            return result
+
+        if provider == "aws_bedrock":
+            logger.debug("Getting AWS Bedrock embeddings")
+            # Import here to avoid potential circular imports
+            from embedding.aws_bedrock_embedding import get_aws_bedrock_embeddings
+            result = get_aws_bedrock_embeddings(text, model=model_id, timeout=timeout)
+            logger.debug(f"AWS Bedrock embeddings received, dimension: {len(result)}")
             return result
 
         error_msg = f"No embedding implementation for provider '{provider}'"
@@ -220,6 +229,17 @@ async def batch_get_embeddings(
                 )
                 results.append(embedding)
             logger.debug(f"Gemini batch embeddings received, count: {len(results)}")
+            return results
+    
+        if provider == "aws_bedrock":
+            logger.debug("Getting AWS Bedrock batch embeddings")
+            from embedding.aws_bedrock_embedding import get_aws_bedrock_embeddings
+
+            results = []
+            for text in texts:
+                result = get_aws_bedrock_embeddings(text, model=model_id, timeout=timeout)
+                results.append(result)
+            logger.debug(f"AWS Bedrock batch embeddings received, count: {len(results)}")
             return results
     
         # Default implementation if provider doesn't match any above
