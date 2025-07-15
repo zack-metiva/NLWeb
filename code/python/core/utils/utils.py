@@ -1,31 +1,27 @@
 
+from core.config import CONFIG
+
 recipe_sites = ['seriouseats', 'hebbarskitchen', 'latam_recipes',
                 'woksoflife', 'cheftariq',  'spruce', 'nytimes']
 
 all_sites = recipe_sites + ["imdb", "npr podcasts", "neurips", "backcountry", "tripadvisor", "DataCommons"]
 
 def siteToItemType(site):
-    # For any single site's deployment, this can stay in code. But for the
-    # multi-tenant, it should move to the database
+    # Get item type from configuration
     namespace = "http://nlweb.ai/base"
-    et = "Item"
-    if site == "imdb":
-        et = "Movie"
-    elif site in recipe_sites:
-        et = "Recipe"
-    elif site == "npr podcasts":
-        et = "Thing"
-    elif site == "neurips":
-        et = "Paper"
-    elif site == "backcountry":
-        et = "Outdoor Gear"
-    elif site == "zillow":
-        et = "RealEstate"
-    elif site.lower() == "datacommons":
-        et = "Statistics"
-    else:
-        et = "Items"
-    return f"{{{namespace}}}{et}"
+    
+    # Try to get from configuration
+    try:
+        site_config = CONFIG.get_site_config(site.lower())
+        if site_config and site_config.item_types:
+            # Return the first item type for the site
+            return f"{{{namespace}}}{site_config.item_types[0]}"
+    except:
+        pass
+    
+    # Default to Item if not found in configuration
+    return f"{{{namespace}}}Item"
+
     
 
 def itemTypeToSite(item_type):
@@ -36,10 +32,11 @@ def itemTypeToSite(item_type):
         if siteToItemType(site) == item_type:
             sites.append(site)
     return sites
-    
-
+   
 def visibleUrlLink(url):
     from urllib.parse import urlparse
+    parsed = urlparse(url)
+    return f"<a href='{url}'>{parsed.netloc.replace('www.', '')}</a>"
 
 def visibleUrl(url):
     from urllib.parse import urlparse
@@ -48,27 +45,22 @@ def visibleUrl(url):
 
 def get_param(query_params, param_name, param_type=str, default_value=None):
     value = query_params.get(param_name, default_value)
-    if (value is not None and len(value) == 1):
-        value = value[0]
+    if (value is not None):
         if param_type == str:
-            if value is None:
-                return ""
-            return value    
+            if isinstance(value, list):
+                return value[0] if value else ""
+            return value
         elif param_type == int:
-            if value is None:
-                return 0
             return int(value)
         elif param_type == float:
-            if value is None:
-                return 0.0
             return float(value) 
         elif param_type == bool:
-            if value is None:
-                return False
+            if isinstance(value, list):
+                return value[0].lower() == "true"
             return value.lower() == "true"
         elif param_type == list:
-            if value is None:
-                return []
+            if isinstance(value, list):
+                return value
             return [item.strip() for item in value.strip('[]').split(',') if item.strip()]
         else:
             raise ValueError(f"Unsupported parameter type: {param_type}")
