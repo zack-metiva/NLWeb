@@ -73,3 +73,11 @@ endpoints:
     models:
       high: Qwen/Qwen2.5-72B-Instruct
       low: Qwen/Qwen2.5-Coder-7B-Instruct
+
+  aws_bedrock:
+    api_key_env: AWS_BEDROCK_API_KEY
+    api_version_env: AWS_BEDROCK_REGION
+    llm_type: aws_bedrock
+    models:
+      high: amazon.nova-pro-v1:0
+      low: amazon.nova-micro-v1:0
