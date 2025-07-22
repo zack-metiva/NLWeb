@@ -72,7 +72,7 @@ endpoints:
     use_knn: false
 
   postgres:
-    enabled: true
+    enabled: false
     # Database connection details (i.e. "postgresql://<HOST>:<PORT>/<DATABASE>?user=<USERNAME>&sslmode=require")
     api_endpoint_env: POSTGRES_CONNECTION_STRING
     # Password for authentication 
