@@ -1,4 +1,4 @@
-preferred_provider: azure_openai
+preferred_provider: ollama
 
 providers:
   openai:
@@ -24,7 +24,7 @@ providers:
   
   ollama:
     api_endpoint_env: OLLAMA_URL
-    model: qwen3:0.6b
+    model: nomic-embed-text
 
   elasticsearch:
     # Elasticsearch endpoint (localhost or remote URL with Elastic Cloud/Serverless)
