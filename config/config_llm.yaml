@@ -1,4 +1,4 @@
-preferred_endpoint: ollama
+preferred_endpoint: azure_openai
 
 endpoints:
   inception:
@@ -78,5 +78,5 @@ endpoints:
     api_endpoint_env: OLLAMA_URL
     llm_type: ollama
     models:
-      high: llama3.2:3b
-      low: llama3.2:3b
+      high: qwen3:0.6b
+      low: qwen3:0.6b
